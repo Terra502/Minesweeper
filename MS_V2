@@ -1,0 +1,677 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.*;       
+
+public class MS_V2 extends JFrame implements ActionListener
+{
+  static int _x = 20;
+  static int _y = 20;
+  int _zellenReihen = _x;  //Anzahl Reihen
+  int _zellenSpalten = _y; //Anzahl Spalten
+  JButton[][] _zellenButtonArray;
+  JButton _simulationButton;
+  GridBagConstraints _gbc;
+  Container _contentPanel;
+  JLabel _genLabel;
+  JLabel _bevLabel;
+  String _simulation = "<html><body><font color=\"red\">Random</font> Anfang</body></html>";
+  boolean[][] _booleanArray; //WICHTIG, ABER FERTIG
+  int[][] _intArray;     //WICHTIG UND NICHT FERTIG
+  int _minen;      
+  static String _schwierigkeit = "Leicht";
+  String[] options = {"Leicht", "Normal", "Schwer"};
+  JComboBox<String> _comboBox = new JComboBox<>(options);
+  JButton _anwenden = new JButton("Anwenden");
+  int count = 0;
+  int _markiert;
+  long startTime = System.nanoTime();
+  JButton _highscore = new JButton("<html><body><font color=\"red\">Highscore</font></body></html>");
+  
+  ImageIcon _eins   = new ImageIcon (".\\1.png");
+  ImageIcon _zwei   = new ImageIcon (".\\2.png");
+  ImageIcon _drei   = new ImageIcon (".\\3.png");
+  ImageIcon _vier   = new ImageIcon (".\\4.png");
+  ImageIcon _fuenf  = new ImageIcon (".\\5.png");
+  ImageIcon _sechs  = new ImageIcon (".\\6.png");
+  ImageIcon _sieben = new ImageIcon (".\\7.png");
+  ImageIcon _acht   = new ImageIcon (".\\8.png");
+  
+  MS_V2(String title) 
+  {
+    super(title);
+    setLayout(new GridBagLayout());
+    //setBackground(Color.LIGHT_GRAY);
+    getContentPane().setBackground(new Color(211,211,211)); 
+    _gbc = new GridBagConstraints();
+    
+    if (_schwierigkeit.equals("Leicht")) {
+      setLeicht();
+    } // end of if
+    if (_schwierigkeit.equals("Normal")) {
+      setNormal();
+    } // end of if
+    if (_schwierigkeit.equals("Schwer")) {
+      setSchwer();
+    } // end of if
+    
+    _zellenButtonArray = new JButton[_zellenReihen][_zellenSpalten];
+    _booleanArray = new boolean[_zellenReihen][_zellenSpalten];
+    _intArray = new int[_zellenReihen][_zellenSpalten];
+    
+    for (int x=0; x<_zellenReihen; x++)
+    {
+      for (int y=0; y<_zellenSpalten; y++)
+      {
+        _zellenButtonArray[x][y] = new JButton();
+        _zellenButtonArray[x][y].setPreferredSize(new Dimension(20,20));
+        _zellenButtonArray[x][y].addActionListener(this);
+        _zellenButtonArray[x][y].setActionCommand(x + " " + y);
+        _zellenButtonArray[x][y].setFont(new Font("Arial", Font.BOLD, 15));
+        _booleanArray[x][y] = false;
+        _intArray[x][y] = 0;
+        _minen = 0;
+        _gbc.gridx = x;
+        _gbc.gridy = y;
+        //_gbc.insets = new Insets(1,1,1,1); //Abstand der einzelnen Panels
+        _zellenButtonArray[x][y].setBackground(new Color(170,190,220));
+        add(_zellenButtonArray[x][y], _gbc);
+      }
+    }
+    
+    _anwenden.addActionListener(new ActionListener() 
+    {
+      public void actionPerformed(ActionEvent back)
+      {
+        _schwierigkeit  = _comboBox.getItemAt(_comboBox.getSelectedIndex()); 
+        MS_V2 frame = new MS_V2("MineSweeper");
+        dispose();
+        frame.pack();
+        frame.setVisible(true);
+        frame.setResizable(false);
+        frame.setLocation(470, 150);
+        frame.randomizeAnfang();
+      }
+    });
+    
+    _highscore.addActionListener(new ActionListener() 
+    {
+      public void actionPerformed(ActionEvent back)
+      { 
+        //dispose();
+        MS_Highscore frame = new MS_Highscore("MineSweeper");
+        frame.pack();
+        frame.setResizable(false);
+        frame.setLocation(500,300);
+        frame.setSize(500,400);
+        frame.setVisible(true);
+      }
+    });
+    
+    _simulationButton = new JButton(_simulation);
+    _simulationButton.addActionListener(new ActionListener() 
+    {
+      public void actionPerformed(ActionEvent simulation)
+      {
+        randomizeAnfang();
+      }
+    });//Event
+    
+    _anwenden.setBackground(Color.WHITE);
+    
+    _genLabel = new JLabel(_schwierigkeit);
+    _bevLabel = new JLabel("Minen: " + _minen);
+    
+    _gbc.gridwidth = _zellenReihen;
+    _gbc.gridheight = _zellenSpalten;
+    
+    _gbc.fill = GridBagConstraints.HORIZONTAL;
+    
+    _gbc.gridx = _x;
+    _gbc.gridy = 0;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.FIRST_LINE_END;
+    
+    add(_genLabel, _gbc);
+    _gbc.gridx = _x;
+    _gbc.gridy = 3;
+    add(_bevLabel, _gbc);
+    
+    _gbc.gridx = _x;
+    _gbc.gridy = 6;
+    add(_simulationButton, _gbc);
+    
+    _gbc.gridx = _x;
+    _gbc.gridy = 9;
+    add(_comboBox, _gbc);
+    
+    _gbc.anchor = GridBagConstraints.FIRST_LINE_END;
+    _gbc.gridx = _x;
+    _gbc.gridy = 12;
+    add(_anwenden, _gbc);
+    
+    _gbc.anchor = GridBagConstraints.FIRST_LINE_END;
+    _gbc.gridx = _x;
+    _gbc.gridy = 15;
+    add(_highscore, _gbc);
+    
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+  }
+  
+  public void actionPerformed(ActionEvent evt)
+  {
+    for (int x = 0; x < _zellenReihen; x++) {
+      for (int y = 0; y < _zellenSpalten; y++) {
+        if (evt.getActionCommand().equals(x + " " + y)) {
+          String _zwischen = evt.getActionCommand();
+          iconSetzen(_zwischen);
+          felderZaehlen();
+        } // end of if
+      }
+    }
+    if (_schwierigkeit.equals("Leicht")) {
+      if (count + _minen == 400) {
+        zeit();
+        gewonnen();
+      } // end of if
+    } // end of if
+    if (_schwierigkeit.equals("Normal")) {
+      if (count + _minen == 900) {
+        zeit();
+        gewonnen();
+      } // end of if
+    } // end of if
+    if (_schwierigkeit.equals("Schwer")) {
+      if (count + _minen == 1600) {
+        zeit();
+        gewonnen();
+      } // end of if
+    } // end of if
+  }
+  
+  public void zeit()
+  {
+    long endTime   = System.nanoTime();
+    long totalTime = (endTime - startTime)/1000000000;
+    
+    String fileName = "log.txt";
+    PrintWriter print = null;
+    
+    try {
+      print = new PrintWriter( new BufferedWriter( new FileWriter( fileName, true )));
+    } catch(IOException iox) {
+      System.out.println("Problem writing " + fileName);
+    } // end of tryPrintWriter print = null;
+    print.println("");
+    print.println(_schwierigkeit + ": " + totalTime);
+    print.close();
+  }
+  
+  public void gewonnen()
+  {
+    dispose();
+    MS_Sieg siegFrame = new MS_Sieg("Du hast gewonnen");
+    siegFrame.pack();
+    siegFrame.setSize(500,300);
+    siegFrame.setVisible(true);
+    siegFrame.setResizable(false);
+    siegFrame.setLocation(700, 400);
+  }
+  
+  public void felderZaehlen()      
+  {
+    count = 0;
+    Color _whiteTest = _anwenden.getBackground();
+    for (int x = 0; x < _zellenReihen; x++) {
+      for (int y = 0; y < _zellenSpalten; y++) {
+        if (_zellenButtonArray[x][y].getBackground().equals(_whiteTest)) {
+          count++;
+        } // end of if
+      }
+    }
+  }
+  
+  public void setLeicht()
+  {
+    _zellenReihen  = 20;
+    _zellenSpalten = 20;
+    _x             = 20;
+    _y             = 20;
+  }
+
+  public void setNormal()
+  {
+    _zellenReihen  = 30;
+    _zellenSpalten = 30;
+    _x             = 30;
+    _y             = 30;
+  }
+
+  public void setSchwer()
+  {
+    _zellenReihen  = 40;
+    _zellenSpalten = 40;
+    _x             = 40;
+    _y             = 40;
+  }
+  
+  public void iconSetzen(String uebergabe)
+  {
+    String _zwischen = uebergabe;
+    int ax = _zwischen.indexOf(" ");
+    String _subString = _zwischen.substring(0, ax);
+    ax = Integer.parseInt(_subString);
+    int ay = _zwischen.indexOf(" ");
+    _subString = _zwischen.substring(ay+1);
+    ay = Integer.parseInt(_subString);;         
+    if (_booleanArray[ax][ay] == true) {
+      dispose();
+      _zellenButtonArray[ax][ay].setBackground(Color.RED);
+      MS_Niederlage niederlageFrame = new MS_Niederlage("Du hast Verloren");
+      niederlageFrame.pack();
+      niederlageFrame.setSize(500,300);
+      niederlageFrame.setVisible(true);
+      niederlageFrame.setResizable(false);
+      niederlageFrame.setLocation(470, 150);
+    } else {
+      auswertung(ax,ay);
+    } // end of if-else
+  }
+                    
+  public void auswertung(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    
+    Color _whiteTest = _anwenden.getBackground();
+    if (_intArray[ax][ay] == 0) {
+      if (_zellenButtonArray[ax][ay].getBackground().equals(_whiteTest)) {
+      } else {
+        _zellenButtonArray[ax][ay].setBackground(Color.WHITE);
+        aufdeckenObenRechts(ax,ay);
+      } // end of if-else            
+    } // end of if
+    if (_intArray[ax][ay] == 1) {
+      _zellenButtonArray[ax][ay].setIcon(_eins);
+    } // end of if
+    if (_intArray[ax][ay] == 2) {
+      _zellenButtonArray[ax][ay].setIcon(_zwei);
+    } // end of if
+    if (_intArray[ax][ay] == 3) {
+      _zellenButtonArray[ax][ay].setIcon(_drei);
+    } // end of if
+    if (_intArray[ax][ay] == 4) {
+      _zellenButtonArray[ax][ay].setIcon(_vier);
+    } // end of if
+    if (_intArray[ax][ay] == 5) {
+      _zellenButtonArray[ax][ay].setIcon(_fuenf);
+    } // end of if
+    if (_intArray[ax][ay] == 6) {
+      _zellenButtonArray[ax][ay].setIcon(_sechs);
+    } // end of if
+    if (_intArray[ax][ay] == 7) {
+      _zellenButtonArray[ax][ay].setIcon(_sieben);
+    } // end of if
+    if (_intArray[ax][ay] == 8) {
+      _zellenButtonArray[ax][ay].setIcon(_acht);
+    } // end of if
+    _zellenButtonArray[ax][ay].setBackground(Color.WHITE);
+  }
+  
+  public void aufdeckenObenRechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y-1] == false) {
+        auswertung(ax+1,ay-1);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenOben(ax,ay);
+    } // end of try
+  } 
+  
+  public void aufdeckenOben(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x][y-1] == false) {
+        auswertung(ax,ay-1);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenObenLinks(ax,ay);
+    } // end of try
+  }
+  
+  public void aufdeckenObenLinks(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y-1] == false) {
+        auswertung(ax-1,ay-1);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenLinks(ax,ay);
+    } // end of try
+  }
+  
+  public void aufdeckenLinks(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y] == false) {
+        auswertung(ax-1,ay);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenRechts(ax,ay);
+    } // end of try
+  }
+  
+  public void aufdeckenRechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y] == false) {
+        auswertung(ax+1,ay);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenUntenLinks(ax,ay);
+    } // end of try
+  }
+  
+  public void aufdeckenUntenRechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y+1] == false) {
+        auswertung(ax+1,ay+1);
+      }
+    } catch(Exception e) {
+    } 
+  }
+  
+  public void aufdeckenUnten(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x][y+1] == false) {
+        auswertung(ax,ay+1);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenUntenRechts(ax,ay);
+    } // end of try
+  }
+  
+  public void aufdeckenUntenLinks(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y+1] == false) {
+        auswertung(ax-1,ay+1);
+      }
+    } catch(Exception e) {      
+    } finally {
+      aufdeckenUnten(ax,ay);
+    } // end of try
+  }
+    
+  
+  private void countNachbarn() 
+  {
+    //HIER FEHLT NOCH ETWAS!!!
+    clearIntArray();
+    for (int x = 0; x < _zellenReihen; x++) {
+      for (int y = 0; y < _zellenSpalten; y++) {
+        obenRechts(x,y);
+      }
+    }
+    //ACHTUNG!!! Optional: ECKEN UND KANTEN BEACHTEN
+  }  
+      
+  public void obenRechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y-1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      oben(ax,ay);
+    } // end of try
+  }
+  
+  public void oben(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x][y-1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      obenLinks(ax,ay);
+    } // end of try
+  }
+  
+  public void obenLinks(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y-1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      links(ax,ay);
+    } // end of try
+  }
+  
+  public void links(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      rechts(ax,ay);
+    } // end of try
+  }
+  
+  public void rechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      untenLinks(ax,ay);
+    } // end of try
+  }
+  
+  public void untenLinks(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x-1][y+1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      unten(ax,ay);
+    } // end of try
+  }
+  
+  public void unten(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x][y+1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {      
+    } finally {
+      untenRechts(ax,ay);
+    } // end of try
+  }
+  
+  public void untenRechts(int x, int y)
+  {
+    int ax = x;
+    int ay = y;
+    try {
+      if (_booleanArray[x+1][y+1] == true) {
+        _intArray[x][y] = _intArray[x][y] + 1;
+      }
+    } catch(Exception e) {
+    } 
+  }
+  
+  private int rechnen()
+  {
+    int minen = 0;
+    if (_schwierigkeit.equals("Leicht")) {
+      minen = 60;
+    } // end of if
+    if (_schwierigkeit.equals("Normal")) {
+      minen = 150;
+    } // end of if
+    if (_schwierigkeit.equals("Schwer")) {
+      minen = 300;
+    } // end of if
+    return minen;
+  }
+       
+  public void randomizeAnfang()
+  {
+    count = 0;
+    for (int x = 0; x < _zellenReihen; x++) {
+      for (int y = 0; y < _zellenSpalten; y++) {
+        _booleanArray[x][y] = false;
+      }
+    }
+    
+    for (int x = 0; x < _zellenReihen; x++) {
+      for (int y = 0; y < _zellenSpalten ;y++ ) {
+        _zellenButtonArray[x][y].setIcon(null);
+      } // end of for
+    }
+    
+    for (int i = 0; i<rechnen(); i++)
+    {
+      int x = 0;
+      int y = 0;
+      
+      do
+      {
+        double x1 = Math.random()*100;
+        x = (int) x1;
+      }  
+      while (x>_zellenReihen-1);
+      do
+      {
+        double y1 = Math.random()*100;
+        y = (int) y1;
+      }  
+      while (y>_zellenSpalten-1);
+      _booleanArray[x][y] = true;
+    }
+    countNachbarn();    
+    male();
+  }
+  
+  public void male()
+  {
+    _minen = 0;
+    for (int x = 0; x<_zellenReihen; x++)
+    {
+      for (int y = 0; y<_zellenSpalten; y++)
+      {
+        if (_booleanArray[x][y])
+        {
+          _minen++;
+          _gbc.gridx = x;
+          _gbc.gridy = y;
+          //_gbc.insets = new Insets(1,1,1,1);
+          _zellenButtonArray[x][y].setBackground(new Color(170,190,220));
+        }
+        else
+        {
+          _gbc.gridx = x;
+          _gbc.gridy = y;
+          //_gbc.insets = new Insets(1,1,1,1);
+          _zellenButtonArray[x][y].setBackground(new Color(170,190,220));
+        }
+      }
+    }
+    _bevLabel.setText("Minen: " + _minen);
+  } 
+
+  private void clearSpielfeld()
+  {
+    _minen = 0;
+    _gbc.gridx = 0;
+    _gbc.gridy = _zellenReihen+13;
+    _genLabel.setText(_schwierigkeit);
+    for (int x=0; x<_zellenReihen; x++)
+    {
+      for (int y=0; y<_zellenSpalten; y++)
+      {
+        _gbc.gridx = x;
+        _gbc.gridy = y;
+        //_gbc.insets = new Insets(1,1,1,1);
+        _zellenButtonArray[x][y].setBackground(Color.WHITE);
+        _booleanArray[x][y] = false;
+        _intArray[x][y] = 0;
+      }
+    }
+    _bevLabel.setText("Minen: " + _minen);
+  }
+  
+  private void clearIntArray()
+  {
+    for( int x=0; x<_zellenReihen; x++ ) 
+    {
+      for( int y=0; y<_zellenSpalten; y++ )
+      {
+        _intArray[x][y] = 0;
+      }
+    }
+  }
+  
+  public static void main(String[] args) 
+  {
+    //Main Methode für den Startvorgang
+    MS_V2 frame = new MS_V2("MineSweeper");
+    frame.pack();
+    frame.setVisible(true);
+    frame.setResizable(false);
+    frame.setLocation(700, 400);
+    frame.randomizeAnfang();
+  }
+}
