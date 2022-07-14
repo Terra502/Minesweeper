@@ -1,0 +1,160 @@
+import java.io.*;
+import javax.swing.*;
+import java.awt.event.*;
+import java.awt.*;
+import java.awt.GridBagConstraints;
+
+public class MS_Highscore extends JFrame implements ActionListener 
+{
+  JLabel _headline      = new JLabel("<html><body><h1 style=\"font-size:2em;color:red;\">Highscores</h1></body></html>");
+  JLabel _leicht        = new JLabel("Leicht: ");
+  JLabel _normal        = new JLabel("Normal: ");
+  JLabel _schwer        = new JLabel("Schwer: ");
+  JLabel _leichtZeit    = new JLabel("0 Sekunden");
+  JLabel _normalZeit    = new JLabel("0 Sekunden");
+  JLabel _schwerZeit    = new JLabel("0 Sekunden");
+  
+  JPanel _leichtPanel   = new JPanel();  
+  JPanel _normalPanel   = new JPanel();  
+  JPanel _schwerPanel   = new JPanel();
+  JPanel _buttons       = new JPanel();
+  
+  JButton _zurück       = new JButton("Zurück");
+  JButton _verlassen    = new JButton("Verlassen");
+  
+  GridBagConstraints _gbc;
+  
+  int leicht = 18700000;
+  int normal = 18700000;
+  int schwer = 18700000;
+  
+  MS_Highscore(String title)
+  {
+    super(title);
+    setLayout(new GridBagLayout());
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    _gbc = new GridBagConstraints();
+    
+    _gbc.gridx = 1;
+    _gbc.gridy = 0;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.PAGE_START;
+    add(_headline, _gbc);
+    
+    _leichtPanel.add(_leicht);
+    _leichtPanel.add(_leichtZeit);
+    
+    _normalPanel.add(_normal);
+    _normalPanel.add(_normalZeit);
+    
+    _schwerPanel.add(_schwer);
+    _schwerPanel.add(_schwerZeit);
+    
+    _gbc.gridx = 1;
+    _gbc.gridy = 3;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.CENTER;
+    add(_leichtPanel, _gbc);
+    
+    _gbc.gridx = 1;
+    _gbc.gridy = 6;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.CENTER;
+    add(_normalPanel, _gbc);
+    
+    _gbc.gridx = 1;
+    _gbc.gridy = 9;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.CENTER;
+    add(_schwerPanel, _gbc);
+    
+    _buttons.setLayout(new BorderLayout());
+    _buttons.add(_verlassen, BorderLayout.WEST);
+    _buttons.add(_zurück, BorderLayout.EAST);
+    _buttons.setPreferredSize(new Dimension(300,30));
+    _gbc.gridx = 1;
+    _gbc.gridy = 12;
+    _gbc.weighty = 0.5;
+    _gbc.anchor = GridBagConstraints.CENTER;
+    add(_buttons, _gbc);
+    
+    _zurück.addActionListener(this);
+    _zurück.setActionCommand("zurück");
+    
+    _verlassen.addActionListener(this);
+    _verlassen.setActionCommand("verlassen");
+    
+    File fileName = new File("log.txt");
+    BufferedReader reader = null;
+    
+    String _line       = null;
+    
+    try {
+      reader = new BufferedReader(new FileReader(fileName));
+      _line = reader.readLine();
+      while (_line != null) { 
+        int index = _line.indexOf(" ")+1;
+        if (_line.substring(0,index).equals("Leicht: ")) {
+          int intZwischen = Integer.parseInt(_line.substring(index));
+          if (intZwischen < leicht) {
+            leicht = intZwischen;  
+          } // end of if
+        } 
+        if (_line.substring(0,index).equals("Normal: ")) {
+          System.out.println("Test");
+          int intZwischen = Integer.parseInt(_line.substring(index));
+          if (intZwischen < normal) {
+            normal = intZwischen;
+          } // end of if
+        } // end of if
+        if (_line.substring(0,index).equals("Schwer: ")) {
+          int intZwischen = Integer.parseInt(_line.substring(index));
+          if (intZwischen < schwer) {
+            schwer = intZwischen;
+          } // end of if
+        } // end of if
+        _line = null;
+        _line = reader.readLine();
+      }// end of while
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        if (reader != null) {
+          reader.close();
+        }
+      } catch (IOException e) {
+      }
+    }
+    if (leicht == 18700000) {
+      leicht = 0;
+    } // end of if
+    if (normal == 18700000) {
+      normal  = 187;
+    } // end of if
+    if (schwer == 18700000) {
+      schwer  = 0;
+    } // end of if
+    _leichtZeit.setText(leicht + " Sekunden");
+    _normalZeit.setText(normal + " Sekunden");
+    _schwerZeit.setText(schwer + " Sekunden");
+  }
+  
+  public void actionPerformed(ActionEvent evt)
+  {
+    if (evt.getActionCommand().equals("zurück")) {
+      dispose();
+      MS_V2 frame = new MS_V2("MineSweeper");
+      frame.pack();
+      frame.setVisible(true);
+      frame.setResizable(false);
+      frame.setLocation(700, 400);
+      frame.randomizeAnfang();
+    } // end of if
+    if (evt.getActionCommand().equals("verlassen")) {
+      System.exit(0);
+    } // end of if
+  }
+}
